@@ -20,6 +20,9 @@ let usersCollection;
 let ordersCollection;
 let mongoConnected = false;
 
+// Redis
+let redisConnected = false;
+
 const logger = pino({
     level: 'info',
     prettyPrint: false,
@@ -59,7 +62,8 @@ app.use(bodyParser.json());
 app.get('/health', (req, res) => {
     const stat = {
         app: 'OK',
-        mongo: mongoConnected
+        mongo: mongoConnected,
+        redis: redisConnected
     };
     res.json(stat);
 });
@@ -236,15 +240,22 @@ app.get('/history/:id', async (req, res) => {
 
 // connect to Redis
 const redisClient = createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379'
+    url: process.env.REDIS_URL || 'redis://redis:6379'
 });
 
 redisClient.on('error', (e) => {
     logger.error('Redis ERROR', e);
+    redisConnected = false;
 });
 redisClient.on('connect', () => {
     logger.info('Redis connected');
+    redisConnected = true;
 });
+redisClient.on('disconnect', () => {
+    logger.info('Redis disconnected');
+    redisConnected = false;
+});
+
 redisClient.connect();
 
 // set up Mongo
